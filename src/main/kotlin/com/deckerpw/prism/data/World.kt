@@ -1,5 +1,6 @@
 package com.deckerpw.prism.data
 
+import com.deckerpw.prism.prismLauncherFile
 import net.querz.nbt.io.NBTUtil
 import net.querz.nbt.tag.CompoundTag
 import java.awt.image.BufferedImage
@@ -34,7 +35,7 @@ class World(
         ProcessBuilder(
             "C:/Windows/System32/cmd.exe",
             "/C",
-            "C:\\Users\\decke\\AppData\\Local\\Programs\\PrismLauncher\\prismlauncher.exe",
+            prismLauncherFile,
             "--launch",
             "\"${instance.localName}\"",
             "--world",
@@ -47,7 +48,7 @@ class World(
         ProcessBuilder(
             "C:/Windows/System32/cmd.exe",
             "/C",
-            "C:\\Users\\decke\\AppData\\Local\\Programs\\PrismLauncher\\prismlauncher.exe",
+            prismLauncherFile,
             "--launch",
             "\"${instance.localName}\""
         ).directory(File("C:/Users/decke/AppData/Local/Programs/PrismLauncher")).start()

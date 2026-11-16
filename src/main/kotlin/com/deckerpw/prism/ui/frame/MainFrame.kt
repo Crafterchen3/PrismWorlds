@@ -1,16 +1,18 @@
 package com.deckerpw.prism.ui.frame
 
+import com.deckerpw.poolbox.about.AboutDialog
 import com.deckerpw.prism.data.Instance
 import com.deckerpw.prism.data.Library
 import com.deckerpw.prism.data.Server
 import com.deckerpw.prism.data.World
+import com.deckerpw.prism.instancesDir
 import com.deckerpw.prism.poolApp
 import com.deckerpw.prism.saveServers
 import com.deckerpw.prism.servers
 import com.deckerpw.prism.sorting
+import com.deckerpw.prism.start
 import com.deckerpw.prism.ui.component.WorldImage
 import com.deckerpw.prism.ui.component.ServerImage
-import com.deckerpw.prism.uuid
 import com.formdev.flatlaf.FlatClientProperties
 import java.awt.BorderLayout
 import java.awt.Desktop
@@ -41,6 +43,7 @@ import javax.swing.JTabbedPane
 import javax.swing.JTextField
 import javax.swing.ListSelectionModel
 import javax.swing.SwingConstants
+import javax.swing.SwingUtilities
 import javax.swing.border.EmptyBorder
 
 class MainFrame : JFrame("Prism Worlds") {
@@ -52,7 +55,7 @@ class MainFrame : JFrame("Prism Worlds") {
 
         val loadingFrame = LoadingFrame()
         Thread.sleep(10)
-        val library = Library("C:/Users/decke/AppData/Roaming/PrismLauncher/instances")
+        val library = Library(instancesDir)
         val worldListModel = DefaultListModel<World>().apply { library.worldList.forEach { addElement(it) } }
         val serverListModel = DefaultListModel<Server>().apply { servers.forEach { addElement(it) } }
 
@@ -60,30 +63,33 @@ class MainFrame : JFrame("Prism Worlds") {
         val menuBar = JMenuBar()
 
         //Menu Bar
-        val fileMenu = JMenu("Datei")
-        fileMenu.add(JMenuItem("UUID setzen").apply {
+        val fileMenu = JMenu("File")
+        fileMenu.add(JMenuItem("Settings").apply {
             addActionListener {
-                val neuerUUID = JOptionPane.showInputDialog(this@MainFrame, "Neue UUID eingeben:", uuid)
-                if (!neuerUUID.isNullOrBlank()) {
-                    uuid = neuerUUID
-                    //Reload worlds
-                    worldListModel.clear()
-                    val newLibrary = Library("C:/Users/decke/AppData/Roaming/PrismLauncher/instances")
-                    newLibrary.worldList.forEach { worldListModel.addElement(it) }
+                settings(this@MainFrame){ restart ->
+                    if (restart)
+                        this@MainFrame.dispose()
+                    else{
+                        this@MainFrame.dispose()
+                        SwingUtilities.invokeLater {
+                            start()
+                        }
+                    }
                 }
             }
         })
-        fileMenu.add(JMenuItem("Server hinzufügen").apply {
+        fileMenu.addSeparator()
+        fileMenu.add(JMenuItem("Add Server").apply {
             addActionListener {
                 showAddServerDialog(serverListModel, library)
             }
         })
-        fileMenu.add(JMenuItem("Beenden").apply {
+        fileMenu.add(JMenuItem("Exit").apply {
             addActionListener { this@MainFrame.dispose() }
         })
         menuBar.add(fileMenu)
-        val sortMenu = JMenu("Sortieren")
-        sortMenu.add(JCheckBoxMenuItem("Nach Name", sorting == 0).apply {
+        val sortMenu = JMenu("Sorting")
+        sortMenu.add(JCheckBoxMenuItem("By Name", sorting == 0).apply {
             addActionListener {
                 val worlds = mutableListOf<World>()
                 for (i in 0 until worldListModel.size()) {
@@ -104,7 +110,7 @@ class MainFrame : JFrame("Prism Worlds") {
                 }
             }
         })
-        sortMenu.add(JCheckBoxMenuItem("Nach zuletzt gespielt", sorting == 1).apply {
+        sortMenu.add(JCheckBoxMenuItem("By Last Played", sorting == 1).apply {
             addActionListener {
                 val worlds = mutableListOf<World>()
                 for (i in 0 until worldListModel.size()) {
@@ -125,7 +131,7 @@ class MainFrame : JFrame("Prism Worlds") {
                 }
             }
         })
-        sortMenu.add(JCheckBoxMenuItem("Nach Spielzeit", sorting == 2).apply {
+        sortMenu.add(JCheckBoxMenuItem("By Playtime", sorting == 2).apply {
             addActionListener {
                 val worlds = mutableListOf<World>()
                 for (i in 0 until worldListModel.size()) {
@@ -147,10 +153,16 @@ class MainFrame : JFrame("Prism Worlds") {
             }
         })
         menuBar.add(sortMenu)
-        val helpMenu = JMenu("Hilfe")
-        helpMenu.add(JMenuItem("Nach Updates suchen...").apply {
+        val helpMenu = JMenu("Help")
+        helpMenu.add(JMenuItem("Look for Updates...").apply {
             addActionListener {
                 poolApp.updater.checkForUpdates(this@MainFrame)
+            }
+        })
+        helpMenu.addSeparator()
+        helpMenu.add(JMenuItem("About").apply {
+            addActionListener {
+                AboutDialog(this@MainFrame, poolApp)
             }
         })
         menuBar.add(helpMenu)
@@ -189,27 +201,27 @@ class MainFrame : JFrame("Prism Worlds") {
                     val world = worldjlist.model.getElementAt(index) as? World
                     world?.let {
                         it.run()
-                        JOptionPane.showMessageDialog(this@MainFrame, "Welt wird gestartet: ${it.name}")
+                        JOptionPane.showMessageDialog(this@MainFrame, "Starting World: ${it.name}")
                         this@MainFrame.dispose()
                     }
                 }else if (e.button == 3){
                     val index = worldjlist.locationToIndex(e.point)
                     val world = worldjlist.model.getElementAt(index) as? World
                     val contextMenu = JPopupMenu().apply {
-                        add(JMenuItem("Starte Welt").apply { addActionListener { world?.run(); this@MainFrame.dispose() } })
-                        add(JMenuItem("Starte Instanz").apply { addActionListener { world?.runInstance(); this@MainFrame.dispose() } })
+                        add(JMenuItem("Run World").apply { addActionListener { world?.run(); this@MainFrame.dispose() } })
+                        add(JMenuItem("Run Instance").apply { addActionListener { world?.runInstance(); this@MainFrame.dispose() } })
                         addSeparator()
-                        add(JMenuItem("Öffne Welt Ordner").apply { addActionListener { Desktop.getDesktop().open(world?.path?.toFile()) } })
-                        add(JMenuItem("Öffne Instanz Ordner").apply { addActionListener { Desktop.getDesktop().open(
+                        add(JMenuItem("Open World Folder").apply { addActionListener { Desktop.getDesktop().open(world?.path?.toFile()) } })
+                        add(JMenuItem("Open Instance Folder").apply { addActionListener { Desktop.getDesktop().open(
                             File(
                                 world?.instance?.path!!
                             )
                         ) } })
                         addSeparator()
-                        add(JMenuItem("Umbenennen").apply { addActionListener {
+                        add(JMenuItem("Rename").apply { addActionListener {
                             val neuerName = JOptionPane.showInputDialog(
                                 this@MainFrame,
-                                "Neuen Namen eingeben:",
+                                "Enter new name:",
                                 world?.name ?: ""
                             )
                             if (!neuerName.isNullOrBlank()) {
@@ -217,11 +229,11 @@ class MainFrame : JFrame("Prism Worlds") {
                                 worldjlist.repaint()
                             }
                         } })
-                        add(JMenuItem("Löschen").apply { addActionListener {
+                        add(JMenuItem("Delete").apply { addActionListener {
                             val confirm = JOptionPane.showConfirmDialog(
                                 this@MainFrame,
-                                "Möchtest du diese Welt wirklich löschen?",
-                                "Löschen bestätigen",
+                                "Do you really want to delete this World?",
+                                "Confirm deletion",
                                 JOptionPane.YES_NO_OPTION
                             )
                             if (confirm == JOptionPane.YES_OPTION) {
@@ -267,22 +279,22 @@ class MainFrame : JFrame("Prism Worlds") {
                     val server = serverjlist.model.getElementAt(index) as? Server
                     server?.let {
                         it.run()
-                        JOptionPane.showMessageDialog(this@MainFrame, "Server wird gestartet: ${it.name}")
+                        JOptionPane.showMessageDialog(this@MainFrame, "Starting server: ${it.name}")
                         this@MainFrame.dispose()
                     }
                 }else if (e.button == 3){
                     val index = serverjlist.locationToIndex(e.point)
                     val server = serverjlist.model.getElementAt(index) as? Server
                     val contextMenu = JPopupMenu().apply {
-                        add(JMenuItem("Starte Server").apply { addActionListener { server?.run(); this@MainFrame.dispose() } })
-                        add(JMenuItem("Starte Instanz").apply { addActionListener { server?.runInstance(); this@MainFrame.dispose() } })
+                        add(JMenuItem("Run Server").apply { addActionListener { server?.run(); this@MainFrame.dispose() } })
+                        add(JMenuItem("Run Instance").apply { addActionListener { server?.runInstance(); this@MainFrame.dispose() } })
                         addSeparator()
-                        add(JMenuItem("Öffne Ordner").apply { addActionListener { Desktop.getDesktop().open(File(server?.preferredInstance?.path!!)) } })
+                        add(JMenuItem("Open Instance Folder").apply { addActionListener { Desktop.getDesktop().open(File(server?.preferredInstance?.path!!)) } })
                         addSeparator()
-                        add(JMenuItem("Umbenennen").apply { addActionListener {
+                        add(JMenuItem("Rename").apply { addActionListener {
                             val neuerName = JOptionPane.showInputDialog(
                                 this@MainFrame,
-                                "Neuen Namen eingeben:",
+                                "Enter new name:",
                                 server?.name ?: ""
                             )
                             if (!neuerName.isNullOrBlank()) {
@@ -292,11 +304,11 @@ class MainFrame : JFrame("Prism Worlds") {
                                 serverjlist.repaint()
                             }
                         } })
-                        add(JMenuItem("Löschen").apply { addActionListener {
+                        add(JMenuItem("Remove").apply { addActionListener {
                             val confirm = JOptionPane.showConfirmDialog(
                                 this@MainFrame,
-                                "Möchtest du diesen Server wirklich löschen?",
-                                "Löschen bestätigen",
+                                "Do you want to remove this server?",
+                                "Confirm Deletion",
                                 JOptionPane.YES_NO_OPTION
                             )
                             if (confirm == JOptionPane.YES_OPTION) {
@@ -313,8 +325,8 @@ class MainFrame : JFrame("Prism Worlds") {
         })
 
 
-        jTabbedPane.addTab("Welten", JScrollPane(worldjlist).apply { border = null })
-        jTabbedPane.addTab("Server", JScrollPane(serverjlist).apply { border = null })
+        jTabbedPane.addTab("Worlds", JScrollPane(worldjlist).apply { border = null })
+        jTabbedPane.addTab("Servers", JScrollPane(serverjlist).apply { border = null })
         add(jTabbedPane)
         loadingFrame.dispose()
         isVisible = true
@@ -322,7 +334,7 @@ class MainFrame : JFrame("Prism Worlds") {
     }
 
     private fun showAddServerDialog(serverListModel: DefaultListModel<Server>, library: Library) {
-        val dialog = JDialog(this, "Server hinzufügen", true)
+        val dialog = JDialog(this, "Add Server", true)
         dialog.layout = BorderLayout(10, 10)
 
         val instanceComboBox =
@@ -347,7 +359,7 @@ class MainFrame : JFrame("Prism Worlds") {
 
             add(Box.createVerticalStrut(10))
 
-            add(JLabel("Bevorzugte Instanz:").apply {
+            add(JLabel("Preferred Instance:").apply {
                 horizontalAlignment = SwingConstants.LEFT
             })
             add(instanceComboBox)
@@ -356,7 +368,7 @@ class MainFrame : JFrame("Prism Worlds") {
         dialog.add(formPanel, BorderLayout.CENTER)
 
         val buttonPanel = JPanel().apply {
-            add(JButton("Hinzufügen").apply {
+            add(JButton("Add").apply {
                 addActionListener {
                     val name = nameField.text
                     val ip = ipField.text
@@ -369,11 +381,11 @@ class MainFrame : JFrame("Prism Worlds") {
                         saveServers()
                         dialog.dispose()
                     } else {
-                        JOptionPane.showMessageDialog(dialog, "Bitte alle Felder ausfüllen!")
+                        JOptionPane.showMessageDialog(dialog, "Please fill out the whole form!")
                     }
                 }
             })
-            add(JButton("Abbrechen").apply {
+            add(JButton("Cancel").apply {
                 addActionListener { dialog.dispose() }
             })
         }
